@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소우주 AI 말 연구소</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --purple:#4D9FD6; --purple-dark:#3A82B5; --good:#63B573; --good-light:#EAF6E9;
+  --bad:#F08A76; --bad-light:#FDEFEA; --yellow:#FFD66B; --sky:#79BEE9;
+  --sea:#3E8FC9; --cream:#FBF7EB; --ink:#33556E; --white:#fff; --radius:24px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Jua',sans-serif; color:var(--ink); min-height:100vh;
+  background:var(--cream);
+  display:flex; flex-direction:column; align-items:center; overflow-x:hidden;
+}
+/* ── 여름 하늘·바다 배경 장식 ── */
+#deco-sky,#deco-sea{position:fixed;pointer-events:none;z-index:-1}
+#deco-sky{inset:0;overflow:hidden}
+.dcloud{position:absolute;width:92px;height:30px;background:#fff;border-radius:99px;
+  box-shadow:26px -13px 0 -4px #fff,-22px -10px 0 -7px #fff;opacity:.85;animation:drift linear infinite}
+@keyframes drift{from{transform:translateX(-140px)}to{transform:translateX(106vw)}}
+#deco-sea{bottom:0;left:0;right:0;line-height:0}
+#deco-sea svg{width:100%;height:76px;display:block}
+#deco-boat{position:absolute;bottom:40px;left:11%;font-size:24px;animation:bob 4.5s ease-in-out infinite}
+#deco-palm{position:absolute;bottom:34px;right:16%;font-size:28px}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(3deg)}}
+button{font-family:'Jua',sans-serif; border:none; cursor:pointer}
+
+/* ── 상단 바 & 진행 ── */
+#topbar{width:100%;max-width:760px;display:flex;align-items:center;justify-content:space-between;padding:14px 16px 2px}
+#logo{line-height:0}
+#logo img{height:38px;width:auto;display:inline-block}
+#mute-btn{background:rgba(255,255,255,.7);border-radius:50%;width:40px;height:40px;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+#progress{display:flex;gap:5px;justify-content:center;padding:8px 10px;flex-wrap:wrap;max-width:760px}
+.step-dot{
+  width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.6);
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  border:3px solid transparent;transition:all .3s;filter:grayscale(1);opacity:.5;
+}
+.step-dot.done{filter:none;opacity:1;background:var(--good-light);border-color:var(--good);font-size:13px}
+.step-dot.now{filter:none;opacity:1;background:#fff;border-color:var(--purple);transform:scale(1.2);box-shadow:0 4px 12px rgba(77,159,214,.35);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(77,159,214,.35)}50%{box-shadow:0 0 0 8px rgba(77,159,214,0)}}
+
+/* ── 화면 공통 ── */
+#stage{width:100%;max-width:760px;padding:8px 16px 46px;display:flex;flex-direction:column;align-items:center}
+.screen{display:none;width:100%;flex-direction:column;align-items:center;animation:fadeUp .45s}
+.screen.active{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+h1{font-size:29px;margin:6px 0 4px;text-align:center}
+h2{font-size:23px;margin:4px 0;text-align:center}
+.sub{font-family:'Gaegu',cursive;font-size:18px;text-align:center;color:#5E7F97;line-height:1.55;margin:6px 0 12px}
+.big-btn{
+  background:var(--purple);color:#fff;font-size:21px;padding:15px 42px;border-radius:999px;
+  box-shadow:0 6px 0 var(--purple-dark);transition:transform .1s;margin-top:14px;
+}
+.big-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--purple-dark)}
+.big-btn.green{background:var(--good);box-shadow:0 6px 0 #4e9159}
+.big-btn.green:active{box-shadow:0 2px 0 #4e9159}
+.big-btn.orange{background:#F0932B;box-shadow:0 6px 0 #cf7a17}
+.big-btn.orange:active{box-shadow:0 2px 0 #cf7a17}
+
+/* ── 로봇 ── */
+.robot-wrap{position:relative;margin:8px 0}
+.robot{width:140px;animation:hoverFloat 3s ease-in-out infinite}
+.robot.sm{width:88px}
+@keyframes hoverFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.robot .eye{transition:all .2s}
+.robot .mouth-happy,.robot .mouth-flat,.robot .mouth-open,.robot .mouth-sad{opacity:0}
+.robot[data-face="happy"] .mouth-happy{opacity:1}
+.robot[data-face="flat"] .mouth-flat{opacity:1}
+.robot[data-face="wow"] .mouth-open{opacity:1}
+.robot[data-face="sad"] .mouth-sad{opacity:1}
+.robot[data-face="wow"] .eye{transform:scale(1.25);transform-origin:center}
+.robot[data-face="sad"] .eye{transform:scaleY(.5);transform-origin:center}
+.robot.jump{animation:jump .5s}
+@keyframes jump{0%,100%{transform:translateY(0)}40%{transform:translateY(-24px) rotate(-4deg)}}
+.robot.shake{animation:shakeR .5s}
+@keyframes shakeR{0%,100%{transform:none}25%{transform:translateX(-9px) rotate(-3deg)}75%{transform:translateX(9px) rotate(3deg)}}
+.robot.spin .eye{animation:eyeSpin .8s linear infinite}
+@keyframes eyeSpin{to{transform:rotate(360deg)}}
+.bubble{
+  position:absolute;left:122px;top:-4px;background:#fff;border-radius:18px;padding:9px 15px;
+  font-size:15px;min-width:120px;max-width:230px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.1);
+  opacity:0;transform:scale(.6);transition:all .25s;z-index:5;line-height:1.4;
+}
+.bubble.show{opacity:1;transform:scale(1)}
+.bubble::before{content:"";position:absolute;left:-9px;top:20px;border:8px solid transparent;border-right-color:#fff}
+
+/* ── 훈련 카드 ── */
+.count-pill{background:#fff;border-radius:999px;padding:5px 18px;font-size:15px;color:var(--purple);box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:6px}
+.word-card{
+  background:#fff;border-radius:24px 30px 22px 28px/28px 22px 30px 24px;padding:32px 30px;font-size:36px;min-width:290px;
+  text-align:center;box-shadow:0 10px 26px rgba(84,144,190,.18);margin:10px 0 18px;
+  animation:cardIn .35s;position:relative;
+}
+@keyframes cardIn{from{opacity:0;transform:scale(.7) rotate(-4deg)}to{opacity:1;transform:none}}
+.word-card.fly-good{animation:flyGoodCard .4s forwards}
+.word-card.fly-bad{animation:flyBadCard .4s forwards}
+@keyframes flyGoodCard{to{opacity:0;transform:translate(-140px,-70px) rotate(-16deg) scale(.4)}}
+@keyframes flyBadCard{to{opacity:0;transform:translate(140px,-70px) rotate(16deg) scale(.4)}}
+.label-btns{display:flex;gap:16px}
+.label-btn{font-size:20px;padding:17px 28px;border-radius:22px;color:#fff;min-width:145px;transition:transform .1s}
+.label-btn:active{transform:scale(.93)}
+.label-btn.good{background:var(--good);box-shadow:0 6px 0 #4e9159}
+.label-btn.bad{background:var(--bad);box-shadow:0 6px 0 #d7705c}
+.fly-chip{position:fixed;font-size:18px;background:#fff;border-radius:10px;padding:3px 9px;box-shadow:0 3px 8px rgba(0,0,0,.15);z-index:70;pointer-events:none;transition:all .7s cubic-bezier(.4,-0.2,.6,1);color:var(--purple)}
+.brain-hud{display:flex;align-items:center;gap:10px;background:#fff;border-radius:999px;padding:7px 18px;box-shadow:0 3px 10px rgba(0,0,0,.07);margin-top:16px;font-size:15px}
+.brain-hud .gauge{width:150px}
+
+/* ── 예측 바 ── */
+.guess-bar{flex-direction:column;align-items:center;gap:8px;background:#fff;border-radius:20px;padding:12px 18px;
+  box-shadow:0 6px 16px rgba(84,144,190,.15);margin:4px 0;width:100%;max-width:470px;animation:cardIn .3s}
+.guess-bar .gq{font-size:17px;text-align:center}
+.guess-bar .gq b{color:var(--purple);font-size:20px}
+.gbtns{display:flex;gap:8px}
+.gbtns button{font-size:15px;padding:9px 14px;border-radius:14px;color:#fff;transition:transform .1s}
+.gbtns button:active{transform:scale(.92)}
+.gbtns button[data-g="good"]{background:var(--good);box-shadow:0 4px 0 #4e9159}
+.gbtns button[data-g="unsure"]{background:var(--yellow);box-shadow:0 4px 0 #dfa93e;color:#7a5b00}
+.gbtns button[data-g="bad"]{background:var(--bad);box-shadow:0 4px 0 #d7705c}
+
+/* ── 게이지 ── */
+.gauge{height:13px;background:#eee;border-radius:999px;overflow:hidden}
+.gauge>div{height:100%;width:0;border-radius:999px;transition:width .5s;background:linear-gradient(90deg,var(--yellow),var(--purple))}
+
+/* ── 분류 공장 ── */
+.factory{position:relative;width:100%;max-width:470px;height:392px;border-radius:22px 28px 24px 26px/26px 22px 28px 24px;overflow:hidden;margin:8px 0;
+  background:linear-gradient(#7FC2EC 0%,#9AD1F2 52%,#C4E5F8 61%,#4D9FD6 61.5%,#3E8FC9 100%);
+  box-shadow:0 10px 26px rgba(84,144,190,.22), inset 0 0 0 5px #fff}
+.fcloud{position:absolute;width:66px;height:22px;background:#fff;border-radius:99px;opacity:.95;
+  box-shadow:18px -10px 0 -3px #fff,-15px -8px 0 -5px #fff;animation:fdrift 26s ease-in-out infinite alternate;z-index:1}
+@keyframes fdrift{from{transform:translateX(-14px)}to{transform:translateX(22px)}}
+.fsun{position:absolute;width:34px;height:34px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 7px rgba(255,214,107,.3);z-index:1}
+.fbox-row{position:absolute;top:12px;left:0;right:0;display:flex;justify-content:space-around;padding:0 8px;z-index:3}
+.fbox{width:122px;background:#fff;border-radius:16px;padding:7px 4px 6px;text-align:center;font-size:13px;box-shadow:0 4px 10px rgba(0,0,0,.09);transition:transform .2s;color:#5E7F97}
+.fbox .ficon{font-size:24px;line-height:1.1}
+.fbox b{display:block;font-size:17px;color:var(--ink)}
+.fbox.good{border-bottom:5px solid var(--good)}
+.fbox.bad{border-bottom:5px solid var(--bad)}
+.fbox.unsure{border-bottom:5px solid var(--yellow)}
+.fbox.bounce{animation:boxBounce .4s}
+@keyframes boxBounce{50%{transform:scale(1.14) rotate(-2deg)}}
+.think{position:absolute;top:100px;left:50%;transform:translateX(-50%);width:250px;background:#fff;border-radius:16px;
+  padding:9px 12px;box-shadow:0 6px 16px rgba(0,0,0,.12);z-index:4;text-align:center;opacity:0;transition:opacity .25s}
+.think.show{opacity:1}
+.think::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);border:9px solid transparent;border-top-color:#fff;border-bottom:none}
+.think .tlabel{font-size:12px;color:#7D99AC;margin-bottom:3px}
+.evi-chip{display:inline-block;margin:2px 3px;padding:2px 9px;border-radius:9px;font-size:15px;animation:stampIn .25s}
+.evi-chip.g{background:var(--good-light);color:var(--good)}
+.evi-chip.b{background:var(--bad-light);color:#e05655}
+.evi-chip.n{background:#f0f0f0;color:#8FA9BA}
+@keyframes stampIn{from{transform:scale(1.7);opacity:0}to{transform:none;opacity:1}}
+.conf-row{display:flex;align-items:center;gap:7px;margin-top:6px}
+.conf-row .gauge{flex:1}
+.conf-row .cpct{font-size:13px;color:#7D99AC;min-width:36px;text-align:right}
+.factory-robot{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);z-index:2}
+.factory-robot .robot{animation:none}
+.belt{position:absolute;bottom:12px;left:0;right:0;height:42px;
+  background:repeating-linear-gradient(90deg,#4D9FD6 0 26px,#4496CE 26px 52px);
+  border-top:4px solid rgba(255,255,255,.9);}
+.belt.moving{animation:beltMove .9s linear infinite}
+@keyframes beltMove{to{background-position:52px 0}}
+.belt-card{position:absolute;bottom:44px;left:-190px;background:#fff;border-radius:14px;padding:9px 16px;font-size:21px;
+  box-shadow:0 6px 14px rgba(0,0,0,.14);transition:left .6s ease-out;white-space:nowrap;z-index:3}
+.belt-card.fly-good{transition:all .5s ease-in;transform:translate(-150px,-268px) scale(.18);opacity:.15}
+.belt-card.fly-unsure{transition:all .5s ease-in;transform:translate(0,-268px) scale(.18);opacity:.15}
+.belt-card.fly-bad{transition:all .5s ease-in;transform:translate(150px,-268px) scale(.18);opacity:.15}
+.hud{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:470px;padding:2px 8px;font-size:19px}
+.hearts span{transition:transform .3s}
+.hearts span.lost{filter:grayscale(1);opacity:.35;transform:scale(.8)}
+#score-pill{background:#fff;border-radius:999px;padding:4px 16px;color:var(--purple);box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:16px}
+.combo-pop{position:absolute;top:150px;left:50%;transform:translateX(-50%);font-size:26px;color:#F0932B;z-index:6;
+  animation:comboPop .8s forwards;pointer-events:none;text-shadow:0 2px 0 #fff}
+@keyframes comboPop{0%{opacity:0;transform:translateX(-50%) scale(.4)}30%{opacity:1;transform:translateX(-50%) scale(1.3)}100%{opacity:0;transform:translateX(-50%) translateY(-40px) scale(1)}}
+.score-pop{position:fixed;font-size:22px;color:var(--good);pointer-events:none;animation:scorePop 1s forwards;z-index:99}
+@keyframes scorePop{from{opacity:1}to{opacity:0;transform:translateY(-56px)}}
+
+/* ── 결과 패널 ── */
+.result-panel{background:#fff;border-radius:20px 26px 18px 24px/24px 18px 26px 20px;padding:18px 24px;margin-top:12px;width:100%;max-width:470px;box-shadow:0 8px 20px rgba(84,144,190,.15);text-align:center}
+.acc-bar{height:22px;background:#eee;border-radius:999px;overflow:hidden;margin:9px 0;position:relative}
+.acc-bar>div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--yellow),var(--good));width:0;transition:width 1s ease-out;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-size:13px}
+.review-list{max-height:160px;overflow-y:auto;text-align:left;font-size:14px;margin-top:8px;border-top:2px dashed #eee;padding-top:8px;line-height:1.5}
+
+/* ── 두뇌 들여다보기 ── */
+.brain-view{display:flex;gap:12px;width:100%;max-width:520px;margin:10px 0}
+.brain-half{flex:1;background:#fff;border-radius:20px;padding:12px 10px;text-align:center;box-shadow:0 8px 18px rgba(84,144,190,.13);min-height:190px}
+.brain-half h3{font-size:17px;margin-bottom:8px}
+.brain-half.goodside h3{color:var(--good)}
+.brain-half.badside h3{color:var(--bad)}
+.brain-chip{display:inline-block;margin:3px;padding:3px 10px;border-radius:10px;animation:stampIn .3s backwards}
+.brain-half.goodside .brain-chip{background:var(--good-light);color:#00947a}
+.brain-half.badside .brain-chip{background:var(--bad-light);color:#e05655}
+
+/* ── 발견 카드 ── */
+.concept-card{background:linear-gradient(150deg,#FFF9E8,#FFEFF6);border:4px solid var(--yellow);border-radius:26px;
+  padding:24px 28px;max-width:360px;text-align:center;animation:cardFlip .6s;box-shadow:0 14px 34px rgba(0,0,0,.18)}
+@keyframes cardFlip{0%{transform:rotateY(90deg) scale(.7);opacity:0}60%{transform:rotateY(-12deg) scale(1.03)}100%{transform:none;opacity:1}}
+.concept-card .cnum{font-size:13px;color:#c98a00;letter-spacing:2px}
+.concept-card .cicon{font-size:52px;margin:8px 0}
+.concept-card h3{font-size:21px;margin-bottom:8px}
+.concept-card p{font-size:15px;color:#5E7F97;line-height:1.6}
+.mini-card{background:linear-gradient(150deg,#FFF9E8,#FFEFF6);border:2px solid var(--yellow);border-radius:14px;padding:8px 6px;font-size:12px;text-align:center;width:104px;line-height:1.35}
+.mini-card .cicon{font-size:26px}
+
+/* ── OX 퀴즈 ── */
+.ox-btns{display:flex;gap:22px;margin-top:14px}
+.ox-btn{width:110px;height:110px;border-radius:28px;font-size:52px;color:#fff;transition:transform .1s}
+.ox-btn:active{transform:scale(.92)}
+.ox-btn.o{background:var(--good);box-shadow:0 7px 0 #4e9159}
+.ox-btn.x{background:var(--bad);box-shadow:0 7px 0 #d7705c}
+.quiz-card{background:#fff;border-radius:22px 28px 20px 26px/26px 20px 28px 22px;padding:26px 30px;font-size:22px;max-width:440px;text-align:center;box-shadow:0 10px 26px rgba(84,144,190,.18);margin:8px 0;line-height:1.5;animation:cardIn .35s}
+.quiz-feedback{font-size:16px;color:#5E7F97;margin-top:10px;text-align:center;line-height:1.6;min-height:52px}
+
+/* ── 수료증 ── */
+#cert-canvas{max-width:100%;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,.18);margin:14px 0}
+.name-input{font-family:'Jua';font-size:21px;padding:12px 20px;border:3px solid var(--purple);border-radius:16px;text-align:center;width:250px;outline:none;background:#fff}
+.stars{font-size:42px;letter-spacing:6px;margin:6px 0}
+.stars span{display:inline-block;animation:starIn .5s backwards}
+.stars span:nth-child(2){animation-delay:.25s}.stars span:nth-child(3){animation-delay:.5s}
+@keyframes starIn{from{transform:scale(3);opacity:0}to{transform:none;opacity:1}}
+
+/* ── 오버레이/폭죽 ── */
+#overlay{position:fixed;inset:0;background:rgba(35,70,98,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#overlay.show{display:flex}
+#overlay .panel{background:#fff;border-radius:28px;padding:30px 40px;text-align:center;animation:cardIn .4s;max-width:420px}
+#overlay .panel .emoji{font-size:52px;animation:jump .6s}
+#overlay .panel .sub{margin-bottom:0}
+.confetti{position:fixed;top:-16px;font-size:20px;animation:confFall linear forwards;z-index:60;pointer-events:none}
+@keyframes confFall{to{transform:translateY(110vh) rotate(720deg)}}
+#restart{position:fixed;bottom:12px;right:14px;background:rgba(255,255,255,.7);border-radius:999px;padding:7px 16px;font-size:13px;color:#7D99AC;z-index:40}
+
+@media (max-width:500px){
+  .word-card{font-size:29px;min-width:240px;padding:26px 20px}
+  .label-btn{min-width:118px;font-size:17px;padding:14px 18px}
+  .bubble{left:104px;max-width:170px;font-size:13px}
+  .robot{width:116px}
+  .fbox{width:100px;font-size:11px}
+  .factory{height:370px}
+  .step-dot{width:29px;height:29px;font-size:13px}
+  .ox-btn{width:92px;height:92px;font-size:42px}
+}
+</style>
+</head>
+<body>
+
+<div id="deco-sky">
+  <div class="dcloud" style="top:26px;animation-duration:75s"></div>
+  <div class="dcloud" style="top:84px;transform:scale(.65);animation-duration:105s;animation-delay:-40s"></div>
+</div>
+<div id="deco-sea">
+  <svg viewBox="0 0 1200 90" preserveAspectRatio="none">
+    <path d="M0 46 Q30 32 60 46 T120 46 T180 46 T240 46 T300 46 T360 46 T420 46 T480 46 T540 46 T600 46 T660 46 T720 46 T780 46 T840 46 T900 46 T960 46 T1020 46 T1080 46 T1140 46 T1200 46 V90 H0 Z" fill="#A9D6F1"/>
+    <path d="M0 62 Q30 50 60 62 T120 62 T180 62 T240 62 T300 62 T360 62 T420 62 T480 62 T540 62 T600 62 T660 62 T720 62 T780 62 T840 62 T900 62 T960 62 T1020 62 T1080 62 T1140 62 T1200 62 V90 H0 Z" fill="#4D9FD6"/>
+  </svg>
+  <span id="deco-boat">⛵</span>
+  <span id="deco-palm">🌴</span>
+</div>
+<div id="topbar">
+  <div id="logo"><img src="logo.png" alt="소우주사회적협동조합"></div>
+  <button id="mute-btn" title="소리 켜기/끄기">🔊</button>
+</div>
+<div id="progress"></div>
+<div id="stage"></div>
+<button id="restart" onclick="if(confirm('처음부터 다시 할까요?'))location.reload()">↺ 처음부터</button>
+<div id="overlay"><div class="panel" id="ov-panel"></div></div>
+
+<script>
+/* ═══════════════════════ 효과음 (Web Audio 합성) ═══════════════════════ */
+let actx=null, muted=false;
+function ac(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); return actx; }
+function tone(freq,dur,type='sine',vol=.25,when=0,slideTo=null){
+  if(muted)return; try{
+  const c=ac(),o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,c.currentTime+when);
+  if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,c.currentTime+when+dur);
+  g.gain.setValueAtTime(vol,c.currentTime+when);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+when+dur);
+  o.connect(g);g.connect(c.destination);o.start(c.currentTime+when);o.stop(c.currentTime+when+dur+.05);
+  }catch(e){}
+}
+const sfx={
+  pop(){tone(420,.09,'sine',.3,0,760)},
+  good(){tone(660,.12,'sine',.25);tone(880,.18,'sine',.25,.1)},
+  block(){tone(300,.16,'square',.13,0,120)},
+  unsure(){tone(500,.1,'triangle',.2);tone(430,.14,'triangle',.2,.12)},
+  wrong(){tone(220,.22,'sawtooth',.13,0,140)},
+  clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'sine',.25,i*.12))},
+  fanfare(){[523,523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.16,'triangle',.25,i*.13))},
+  heart(){tone(200,.3,'sawtooth',.17,0,80)},
+  click(){tone(600,.05,'sine',.15)},
+  slide(){tone(240,.28,'sine',.12,0,420)},
+  think(){tone(520,.07,'sine',.1);tone(560,.07,'sine',.1,.15);tone(600,.07,'sine',.1,.3)},
+  combo(n){tone(500+Math.min(n,8)*90,.12,'square',.14,0,700+Math.min(n,8)*90)},
+  cardGet(){[784,988,1175].forEach((f,i)=>tone(f,.2,'triangle',.22,i*.1))},
+  chip(){tone(880,.06,'sine',.12,0,1200)}
+};
+document.getElementById('mute-btn').onclick=e=>{muted=!muted;e.target.textContent=muted?'🔇':'🔊';};
+document.body.addEventListener('pointerdown',()=>{if(!actx)ac();},{once:true});
+
+/* ═══════════════════════ AI 모델 (음절 나이브 베이즈) ═══════════════════════ */
+function makeModel(){return {counts:{good:{},bad:{}},totals:{good:0,bad:0},docs:{good:0,bad:0},vocab:new Set()};}
+function features(w){const s=w.replace(/[\s!?.,~]/g,'');const f=[];for(let i=0;i<s.length;i++)f.push(s[i]);for(let i=0;i<s.length-1;i++)f.push(s[i]+s[i+1]);return f;}
+function trainWord(m,word,label){m.docs[label]++;for(const f of features(word)){m.counts[label][f]=(m.counts[label][f]||0)+1;m.totals[label]++;m.vocab.add(f);}}
+function predict(m,word){
+  const V=m.vocab.size||1,td=m.docs.good+m.docs.bad,sc={};
+  for(const L of['good','bad']){let s=Math.log((m.docs[L]+1)/(td+2));
+    for(const f of features(word))s+=Math.log(((m.counts[L][f]||0)+1)/(m.totals[L]+V));sc[L]=s;}
+  const p=1/(1+Math.exp(-(sc.good-sc.bad)));
+  const label=p>=.5?'good':'bad', conf=Math.max(p,1-p);
+  return {label,conf,unsure:conf<0.65};
+}
+/* 판정 근거: 이 단어의 글자 조각 중 가장 영향이 큰 것들 */
+function explain(m,word){
+  const V=m.vocab.size||1;
+  const uniq=[...new Set(features(word))].filter(f=>f.length===1); /* 아이 눈높이: 한 글자만 */
+  const scored=uniq.map(f=>{
+    const cg=m.counts.good[f]||0, cb=m.counts.bad[f]||0;
+    const lean=Math.log((cg+1)/(m.totals.good+V))-Math.log((cb+1)/(m.totals.bad+V));
+    return {f, seen:cg+cb>0, lean, freq:cg+cb};
+  });
+  scored.sort((a,b)=>(b.seen-a.seen)||(Math.abs(b.lean)-Math.abs(a.lean)));
+  return scored.slice(0,3);
+}
+const brain=makeModel();   /* 소우주 두뇌 */
+const stats={name:'',acc1:0,acc2:0,cards:[],finalScore:0,finalAcc:0,hearts:3,quizOk:0,challengeScore:0};
+
+/* ═══════════════════════ 단어 데이터 (node로 정확도 검증·튜닝 완료) ═══════════════════════ */
+const OBSERVE=['최고야','바보','고마워'];
+const TRAIN1=[['잘했어','good'],['고마워','good'],['멋져','good'],['사랑해','good'],['힘내','good'],['반가워','good'],
+  ['바보','bad'],['싫어','bad'],['꺼져','bad'],['짜증나','bad'],['멍청이','bad'],['저리 가','bad']];
+const TEST1=[['정말 잘했어','good'],['힘내라','good'],['바보야','bad'],['멍청아','bad'],['정말 싫어','bad'],
+  ['최고야','good'],['대단해','good'],['응원할게','good'],['재수없어','bad'],['못생겼어','bad']];
+const TRAIN2=[['최고야','good'],['대단해','good'],['훌륭해','good'],['응원해','good'],['축하해','good'],
+  ['도와줄게','good'],['괜찮아','good'],['같이 놀자','good'],['재미있어','good'],['행복해','good'],
+  ['너는 소중해','good'],['진짜 최고야','good'],
+  ['재수없어','bad'],['못생겼어','bad'],['못됐어','bad'],['너랑 안 놀아','bad'],['넌 못해','bad'],
+  ['나가','bad'],['듣기 싫어','bad'],['비켜','bad'],['못났어','bad'],['너 때문이야','bad']];
+const TEST2=[['최고다','good'],['대단하다','good'],['축하합니다','good'],['정말 행복해','good'],['도와줄래','good'],['너 진짜 멋져','good'],
+  ['못생겼다','bad'],['재수없다','bad'],['너 때문에 그래','bad'],['나가라','bad'],['넌 진짜 못해','bad'],['꺼져라','bad']];
+const PIBBU_TRAIN=['고마워','멋져','사랑해','바보','싫어','꺼져'];
+const PIBBU_LABEL={'고마워':'good','멋져':'good','사랑해':'good','바보':'bad','싫어':'bad','꺼져':'bad'};
+const PIBBU_TEST=[['고맙습니다','good'],['정말 멋져','good'],['바보야','bad'],['진짜 싫어','bad']];
+const AMBIG=['야!','그만해','헐','대박','몰라'];
+const FINAL=[['오늘 정말 재미있었어','good'],['같이 놀자','good'],['네가 최고야','good'],['잘한다 잘한다','good'],
+  ['고마워 친구야','good'],['우리 반가워','good'],['넌 참 훌륭해','good'],['축하해 축하해','good'],
+  ['바보 멍청이','bad'],['진짜 짜증나','bad'],['너 정말 못생겼어','bad'],['저리 가 버려','bad'],
+  ['너랑 안 놀아 재수없어','bad'],['듣기 싫어 나가','bad'],['넌 못해 못났어','bad']];
+const QUIZ=[
+  {q:'AI 로봇은 태어날 때부터<br>좋은말과 나쁜말을 알고 있다?',a:false,why:'아니에요! 배우기 전의 AI는 아무것도 몰라요. 우리가 관찰 실험에서 직접 봤죠?'},
+  {q:'AI는 배운 적 없는 말도<br>무늬가 비슷하면 알아맞힐 수 있다?',a:true,why:'맞아요! "고마워"만 배워도 "고마워요", "고마웠어"를 알아봤죠? 이게 일반화예요.'},
+  {q:'소우주는 말의 뜻을<br>진짜로 이해하고 판단한다?',a:false,why:'아니에요! 무늬로 짐작할 뿐이에요. 그래서 "안 고마워"를 좋은말이라고 착각했죠.'},
+  {q:'가르치는 단어(데이터)가 많을수록<br>AI는 더 정확해진다?',a:true,why:'맞아요! 소우주도 12개 배웠을 때보다 34개 배웠을 때 훨씬 똑똑해졌어요.'},
+  {q:'일부러 반대로 가르쳐도<br>AI는 스스로 바로잡는다?',a:false,why:'아니에요! 삐뚜처럼 AI는 가르친 그대로 판단해요. 그래서 바르게 가르치는 사람이 중요해요.'},
+];
+const PRAISE=['냠냠! 기억했어요!','오~ 새 무늬 발견!','데이터 입력 완료!','똑똑해지는 중!','두뇌가 반짝!','하나 더 배웠다!'];
+
+/* ═══════════════════════ 진행 바 ═══════════════════════ */
+const STEPS=[
+  {icon:'🚀',name:'시작'},{icon:'🔬',name:'관찰 실험'},{icon:'🎓',name:'훈련 1'},{icon:'🧠',name:'두뇌 관찰'},
+  {icon:'🧬',name:'무늬 실험'},
+  {icon:'🏭',name:'분류 시험 1'},{icon:'📚',name:'훈련 2'},{icon:'🏭',name:'분류 시험 2'},{icon:'🧪',name:'삐뚜 실험'},
+  {icon:'💭',name:'마음 가르치기'},{icon:'🏆',name:'졸업 시험'},{icon:'🔭',name:'내 말 챌린지'},
+  {icon:'📝',name:'연구원 퀴즈'},{icon:'📜',name:'수료증'}];
+let curStep=0;
+function drawProgress(){
+  document.getElementById('progress').innerHTML=STEPS.map((s,i)=>
+    `<div class="step-dot ${i<curStep?'done':i===curStep?'now':''}" title="${i+1}. ${s.name}">${i<curStep?'✔':s.icon}</div>`).join('');
+}
+const stage=document.getElementById('stage');
+function show(html,step){curStep=step;drawProgress();stage.innerHTML=`<div class="screen active">${html}</div>`;window.scrollTo(0,0);}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ═══════════════════════ 로봇 SVG ═══════════════════════ */
+function robotSVG(id,opt={}){
+  const body=opt.body||'#6FB7E8', dark=opt.dark||'#4D9FD6', small=opt.small?' sm':'';
+  return `<div class="robot-wrap"><svg id="${id}" class="robot${small}" data-face="${opt.face||'happy'}" viewBox="0 0 120 130">
+    <line x1="60" y1="8" x2="60" y2="22" stroke="${body}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="60" cy="8" r="6" fill="#FFD66B"><animate attributeName="opacity" values="1;.4;1" dur="1.5s" repeatCount="indefinite"/></circle>
+    <rect x="18" y="22" width="84" height="66" rx="20" fill="${body}"/>
+    <rect x="26" y="30" width="68" height="50" rx="14" fill="#FFFFFF"/>
+    <g class="eye-g"><circle class="eye" cx="46" cy="52" r="7" fill="#33556E"/></g>
+    <g class="eye-g"><circle class="eye" cx="74" cy="52" r="7" fill="#33556E"/></g>
+    <circle cx="48.5" cy="49.5" r="2.4" fill="#fff"/><circle cx="76.5" cy="49.5" r="2.4" fill="#fff"/>
+    <path class="mouth-happy" d="M50 64 Q60 73 70 64" stroke="#33556E" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <line class="mouth-flat" x1="52" y1="67" x2="68" y2="67" stroke="#33556E" stroke-width="4" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="60" cy="67" rx="7" ry="9" fill="#33556E"/>
+    <path class="mouth-sad" d="M50 70 Q60 61 70 70" stroke="#33556E" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <rect x="8" y="42" width="10" height="24" rx="5" fill="${dark}"/>
+    <rect x="102" y="42" width="10" height="24" rx="5" fill="${dark}"/>
+    <rect x="34" y="92" width="52" height="26" rx="12" fill="${dark}"/>
+    <circle cx="60" cy="105" r="7" fill="#FFD66B"/>
+  </svg><div class="bubble" id="${id}-bubble"></div></div>`;
+}
+function say(id,text,face='happy',dur=2000){
+  const r=document.getElementById(id),b=document.getElementById(id+'-bubble');
+  if(!r||!b)return; r.dataset.face=face; b.innerHTML=text; b.classList.add('show');
+  clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove('show'),dur);
+}
+function robotFx(id,cls){const r=document.getElementById(id);if(!r)return;r.classList.remove('jump','shake');void r.offsetWidth;r.classList.add(cls);}
+function setFace(id,face){const r=document.getElementById(id);if(r)r.dataset.face=face;}
+
+/* ═══════════════════════ 폭죽 · 오버레이 · 발견 카드 ═══════════════════════ */
+function confetti(n=34){
+  const em=['🎉','⭐','💜','🎊','✨','💚'];
+  for(let i=0;i<n;i++){const d=document.createElement('div');d.className='confetti';
+    d.textContent=em[i%em.length];d.style.left=Math.random()*100+'vw';
+    d.style.animationDuration=(1.6+Math.random()*1.8)+'s';d.style.fontSize=(14+Math.random()*16)+'px';
+    document.body.appendChild(d);setTimeout(()=>d.remove(),3600);}
+}
+function overlay(html){document.getElementById('ov-panel').innerHTML=html;document.getElementById('overlay').classList.add('show');}
+function closeOverlay(){document.getElementById('overlay').classList.remove('show');}
+function stageClear(title,sub,btnText,cb){
+  overlay(`<div class="emoji">🎉</div><h2>${title}</h2><p class="sub">${sub}</p><button class="big-btn" id="ov-btn">${btnText}</button>`);
+  document.getElementById('ov-btn').onclick=()=>{sfx.click();closeOverlay();cb();};
+  sfx.clear();confetti();
+}
+/* 발견 카드: 단계마다 모으는 핵심 개념 */
+function conceptCard(card,cb){
+  stats.cards.push(card);
+  overlay(`
+    <div class="concept-card">
+      <div class="cnum">✦ 발견 카드 ${stats.cards.length} ✦</div>
+      <div class="cicon">${card.icon}</div>
+      <h3>${card.title}</h3>
+      <p>${card.body}</p>
+    </div>
+    <button class="big-btn" id="ov-btn" style="margin-top:18px">카드 얻기! ✨</button>`);
+  document.getElementById('ov-btn').onclick=()=>{sfx.click();closeOverlay();cb();};
+  sfx.cardGet();confetti(22);
+}
+
+/* ═══════════════════════ 공용 : 훈련 장면 ═══════════════════════ */
+/* 라벨을 붙이면 글자 조각이 로봇 머리로 날아가 쌓인다 — 학습이 '보이는' 장면 */
+function trainScene(opt){
+  const words=[...opt.words].sort(()=>Math.random()-.5);
+  let idx=0;
+  show(`
+    <h2>${opt.title}</h2>
+    <p class="sub">${opt.sub}</p>
+    ${robotSVG(opt.robotId||'rt',opt.robot||{})}
+    <div class="count-pill"><span id="tcount">1</span> / ${words.length}</div>
+    <div class="word-card" id="wcard"></div>
+    <div class="label-btns">
+      <button class="label-btn good" id="btn-good">😊 좋은말!</button>
+      <button class="label-btn bad" id="btn-bad">😡 나쁜말!</button>
+    </div>
+    <div class="brain-hud">🧠 두뇌 에너지 <div class="gauge"><div id="tbar"></div></div><span id="tpct">0%</span></div>
+  `,opt.dot);
+  const rid=opt.robotId||'rt';
+  const card=document.getElementById('wcard');
+  const wordAt=i=>Array.isArray(words[i])?words[i][0]:words[i];
+  function next(){
+    if(idx>=words.length){opt.onDone();return;}
+    card.className='word-card';card.textContent=wordAt(idx);
+    document.getElementById('tcount').textContent=idx+1;
+  }
+  function flyChips(word,label){
+    /* 단어의 글자들이 로봇 머리로 날아간다 */
+    const cardR=card.getBoundingClientRect();
+    const robot=document.getElementById(rid);if(!robot)return;
+    const headR=robot.getBoundingClientRect();
+    const syls=word.replace(/[\s!?.,~]/g,'').split('');
+    syls.forEach((s,i)=>{
+      const chip=document.createElement('div');chip.className='fly-chip';chip.textContent=s;
+      chip.style.color=label==='good'?'var(--good)':'var(--bad)';
+      chip.style.left=(cardR.left+cardR.width/2-14+(i-syls.length/2)*26)+'px';
+      chip.style.top=(cardR.top+10)+'px';
+      document.body.appendChild(chip);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        chip.style.left=(headR.left+headR.width/2-12)+'px';
+        chip.style.top=(headR.top+18)+'px';
+        chip.style.transform='scale(.4)';chip.style.opacity='0';
+      }));
+      setTimeout(()=>{sfx.chip();chip.remove();},700+i*40);
+    });
+  }
+  function label(as){
+    if(idx>=words.length)return;
+    const w=wordAt(idx);
+    sfx.pop();
+    trainWord(opt.model,w,as);
+    if(opt.onLabel)opt.onLabel(w,as);
+    flyChips(w,as);
+    card.classList.add(as==='good'?'fly-good':'fly-bad');
+    robotFx(rid,'jump');
+    const syl=w.replace(/[\s!?.,~]/g,'')[0];
+    say(rid,Math.random()<.5?`'${syl}' 무늬 기억!`:PRAISE[Math.floor(Math.random()*PRAISE.length)],'wow',1100);
+    idx++;
+    document.getElementById('tbar').style.width=(idx/words.length*100)+'%';
+    document.getElementById('tpct').textContent=Math.round(idx/words.length*100)+'%';
+    setTimeout(next,480);
+  }
+  document.getElementById('btn-good').onclick=()=>label('good');
+  document.getElementById('btn-bad').onclick=()=>label('bad');
+  next();
+}
+
+/* ═══════════════════════ 공용 : 분류 공장 (컨베이어) 장면 ═══════════════════════ */
+/* 단어가 벨트를 타고 오면 로봇이 근거 글자 + 확신도 게이지를 보여주며 상자로 분류한다 */
+async function conveyorScene(opt){
+  show(`
+    <h2>${opt.title}</h2>
+    <p class="sub">${opt.sub}</p>
+    ${opt.hud?`<div class="hud">
+      <div class="hearts" id="hearts"><span>❤️</span><span>❤️</span><span>❤️</span></div>
+      <div id="combo-label" style="font-size:15px;color:#F0932B"></div>
+      <div id="score-pill">⭐ <span id="score">0</span>점</div>
+    </div>`:''}
+    ${opt.guess?`<div class="guess-bar" id="guess-bar" style="display:none">
+      <div class="gq">「<b id="guess-word"></b>」 — 소우주가 뭐라고 할까요?</div>
+      <div class="gbtns">
+        <button data-g="good">😊 좋은말!</button>
+        <button data-g="unsure">🤔 모를걸?</button>
+        <button data-g="bad">😡 나쁜말!</button>
+      </div>
+    </div>`:''}
+    <div class="factory" id="factory">
+      <div class="fsun" style="right:22px;top:106px"></div>
+      <div class="fcloud" style="left:7%;top:112px"></div>
+      <div class="fcloud" style="left:72%;top:150px;transform:scale(.72);animation-delay:-12s"></div>
+      <div class="fbox-row">
+        <div class="fbox good" id="fb-good"><div class="ficon">😊</div>좋은말 상자<b id="fbc-good">0</b></div>
+        <div class="fbox unsure" id="fb-unsure"><div class="ficon">🤔</div>모르겠어요<b id="fbc-unsure">0</b></div>
+        <div class="fbox bad" id="fb-bad"><div class="ficon">🚫</div>나쁜말 통<b id="fbc-bad">0</b></div>
+      </div>
+      <div class="think" id="think">
+        <div class="tlabel" id="tlabel">생각하는 중…</div>
+        <div id="evi"></div>
+        <div class="conf-row"><div class="gauge"><div id="confbar"></div></div><span class="cpct" id="confpct"></span></div>
+      </div>
+      <div class="factory-robot">${robotSVG('fr',{small:true,...(opt.robot||{})})}</div>
+      <div class="belt moving" id="belt"></div>
+    </div>
+    <div class="result-panel" id="rpanel" style="display:none"></div>
+  `,opt.dot);
+  const factory=document.getElementById('factory');
+  const cnt={good:0,unsure:0,bad:0};
+  let score=0,combo=0,hearts=3;
+  const results=[];
+  const items=opt.shuffle===false?[...opt.items]:[...opt.items].sort(()=>Math.random()-.5);
+
+  function addScore(n){score+=n;const el=document.getElementById('score');if(el)el.textContent=score;}
+  function loseHeart(){
+    const hs=document.querySelectorAll('#hearts span');
+    if(hearts>0){hearts--;hs[hearts].classList.add('lost');sfx.heart();
+      factory.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:280});}
+  }
+  for(let i=0;i<items.length;i++){
+    const item=items[i];
+    const text=Array.isArray(item)?item[0]:item;
+    const truth=Array.isArray(item)?item[1]:null;
+    /* 0) 예측 모드: 학생이 먼저 결과를 예상한다 */
+    let guessVal=null;
+    if(opt.guess){
+      const bar=document.getElementById('guess-bar');
+      document.getElementById('guess-word').textContent=text;
+      bar.style.display='flex';
+      guessVal=await new Promise(res=>{
+        bar.querySelectorAll('button[data-g]').forEach(b=>b.onclick=()=>{sfx.click();res(b.dataset.g);});
+      });
+      bar.style.display='none';
+    }
+    /* 1) 벨트 위로 단어 등장 */
+    const cardEl=document.createElement('div');cardEl.className='belt-card';cardEl.textContent=text;
+    factory.appendChild(cardEl);sfx.slide();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{cardEl.style.left='50%';cardEl.style.marginLeft=(-cardEl.offsetWidth/2)+'px';}));
+    await sleep(opt.fast?680:1000);
+    /* 2) 생각: 근거 글자 → 확신도 게이지 */
+    const p=predict(opt.model,text);
+    const evi=explain(opt.model,text);
+    const think=document.getElementById('think');
+    document.getElementById('tlabel').textContent='생각하는 중…';
+    document.getElementById('evi').innerHTML='';
+    document.getElementById('confbar').style.width='0';
+    document.getElementById('confpct').textContent='';
+    think.classList.add('show');setFace('fr','flat');sfx.think();
+    const thinkMs=opt.fast?420:2200;
+    for(let k=0;k<evi.length;k++){
+      await sleep(opt.fast?110:550);
+      const e=evi[k];
+      const cls=!e.seen?'n':(e.lean>0?'g':'b');
+      const mark=!e.seen?'❓':(e.lean>0?'😊':'😡');
+      document.getElementById('evi').insertAdjacentHTML('beforeend',`<span class="evi-chip ${cls}">${mark} ${e.f}</span>`);
+      sfx.chip();
+    }
+    await sleep(opt.fast?120:400);
+    const confPct=Math.round(p.conf*100);
+    const bar=document.getElementById('confbar');
+    bar.style.background=p.unsure?'var(--yellow)':(p.label==='good'?'var(--good)':'var(--bad)');
+    bar.style.width=confPct+'%';
+    document.getElementById('confpct').textContent=confPct+'%';
+    document.getElementById('tlabel').textContent=p.unsure?'으음… 확신이 없어요':(p.label==='good'?'좋은말 같아요!':'나쁜말 같아요!');
+    await sleep(thinkMs);
+    /* 3) 분류! */
+    const verdict=p.unsure?'unsure':p.label;
+    cardEl.classList.add('fly-'+verdict);
+    const box=document.getElementById('fb-'+verdict);
+    box.classList.remove('bounce');void box.offsetWidth;box.classList.add('bounce');
+    cnt[verdict]++;document.getElementById('fbc-'+verdict).textContent=cnt[verdict];
+    if(verdict==='good'){setFace('fr','happy');sfx.good();}
+    else if(verdict==='bad'){setFace('fr','wow');sfx.block();}
+    else{setFace('fr','sad');sfx.unsure();}
+    think.classList.remove('show');
+    if(opt.guess){
+      const hit=(guessVal===verdict);
+      const t=document.createElement('div');t.className='combo-pop';
+      t.textContent=hit?'🎯 예상 적중!':'😲 예상 밖!';
+      t.style.color=hit?'var(--good)':'#F0932B';
+      factory.appendChild(t);setTimeout(()=>t.remove(),900);
+      if(hit)tone(1047,.15,'triangle',.2);
+    }
+    const ok=truth!==null?(verdict===truth):null;
+    results.push({text,truth,verdict,ok,conf:confPct,evi,guess:guessVal});
+    if(opt.hud&&truth!==null){
+      if(ok){combo++;addScore((truth==='bad'?10:5)+Math.min(combo,5));sfx.combo(combo);
+        if(combo>=2){const c=document.createElement('div');c.className='combo-pop';c.textContent=`콤보 x${combo}!`;factory.appendChild(c);setTimeout(()=>c.remove(),800);}
+        document.getElementById('combo-label').textContent=combo>=2?`🔥 연속 ${combo}개!`:'';
+      }else{
+        combo=0;document.getElementById('combo-label').textContent='';
+        if(truth==='bad'){loseHeart();}else{sfx.wrong();}
+      }
+    }else if(truth!==null&&!ok){sfx.wrong();}
+    await sleep(cardEl?400:0);
+    cardEl.remove();
+    await sleep(opt.fast?160:700);
+  }
+  document.getElementById('belt').classList.remove('moving');
+  if(opt.hud){stats.finalScore=score;stats.hearts=hearts;}
+  opt.onDone(results,document.getElementById('rpanel'));
+}
+/* 결과 패널 공통 */
+function resultPanel(panel,results,extraHtml,btnText,cb){
+  const graded=results.filter(r=>r.truth!==null);
+  const correct=graded.filter(r=>r.ok).length;
+  const acc=Math.round(correct/graded.length*100);
+  const misses=graded.filter(r=>!r.ok);
+  panel.style.display='block';
+  panel.innerHTML=`
+    <h2>${acc>=80?'🌟':acc>=60?'💪':'😅'} 정답률 ${acc}%</h2>
+    <div class="acc-bar"><div id="accfill">${correct}/${graded.length}</div></div>
+    ${misses.length?`<div class="review-list"><b>소우주가 놓친 말 👀</b>${misses.map(m=>
+      `<div>${m.verdict==='unsure'?'🤔':'❌'} "${m.text}" — 사실은 <b>${m.truth==='good'?'좋은말':'나쁜말'}</b> ${m.verdict==='unsure'?'(아는 글자가 없어서 판단 못 함)':''}</div>`).join('')}</div>`
+    :'<p class="sub" style="margin:4px 0">하나도 안 틀렸어요! 완벽해요! 🎉</p>'}
+    ${extraHtml||''}
+    <button class="big-btn green" id="rp-next" style="font-size:18px;padding:12px 34px">${btnText}</button>`;
+  setTimeout(()=>{document.getElementById('accfill').style.width=Math.max(acc,8)+'%';},80);
+  if(acc>=80)sfx.clear();
+  document.getElementById('rp-next').onclick=()=>{sfx.click();cb(acc);};
+  panel.scrollIntoView({behavior:'smooth'});
+  return acc;
+}
+
+/* ═══════════════════════ 1단계 : 인트로 (연구원 임명) ═══════════════════════ */
+function sIntro(){
+  show(`
+    ${robotSVG('r0')}
+    <h1>소우주 AI 말 연구소</h1>
+    <p class="sub">여기는 <b>말(言)을 연구하는 AI 연구소</b>.<br>
+    오늘 아기 로봇 <b>소우주</b>가 태어났어요! 🐣<br>
+    소우주는 아직 좋은말과 나쁜말을 하나도 몰라요.<br>
+    당신을 <b>소우주 담당 연구원</b>으로 임명합니다!</p>
+    <input class="name-input" id="rname" maxlength="8" placeholder="연구원 이름 쓰기">
+    <button class="big-btn" id="start-btn">연구원 임명받기 🚀</button>
+  `,0);
+  setTimeout(()=>say('r0','처음 뵙겠습니다!','wow',2500),600);
+  document.getElementById('start-btn').onclick=()=>{
+    stats.name=document.getElementById('rname').value.trim()||'꼬마';
+    sfx.fanfare();
+    stageClear('임명 완료! 🎖️',`<b>${stats.name} 연구원</b>님, 환영해요!<br>첫 번째 임무는 <b>관찰 실험</b> —<br>배우기 전의 소우주는 어떤 모습일까요?`,'실험 시작!',sObserve);
+  };
+}
+
+/* ═══════════════════════ 2단계 : 관찰 실험 (훈련 0 상태) ═══════════════════════ */
+function sObserve(){
+  conveyorScene({
+    title:'🔬 관찰 실험',
+    sub:`아직 <b>아무것도 배우지 않은</b> 소우주에게<br>단어 3개를 분류시켜 봅니다. 과연…?`,
+    items:OBSERVE, model:brain, dot:1, shuffle:false,
+    onDone(results,panel){
+      panel.style.display='block';
+      panel.innerHTML=`
+        <h2>😲 전부 "모르겠어요"!</h2>
+        <p class="sub" style="margin:6px 0">근거 칸을 보세요 — 전부 <b>❓ 처음 보는 글자</b>였어요.<br>
+        소우주 두뇌가 <b>텅 비어 있기 때문</b>이에요.</p>
+        <button class="big-btn green" id="rp-next" style="font-size:18px;padding:12px 34px">그럼 가르쳐 볼까? ➜</button>`;
+      document.getElementById('rp-next').onclick=()=>{sfx.click();
+        conceptCard({icon:'🥚',title:'AI는 배우기 전엔 아무것도 몰라요',body:'AI는 태어날 때 텅 빈 두뇌예요. 사람이 데이터를 주어야 비로소 판단할 수 있어요.'},sTrain1);
+      };
+      panel.scrollIntoView({behavior:'smooth'});
+    }
+  });
+}
+
+/* ═══════════════════════ 3단계 : 훈련 1 ═══════════════════════ */
+function sTrain1(){
+  trainScene({
+    title:'🎓 첫 번째 훈련',
+    sub:`단어 12개를 가르칩니다. 버튼을 누르면<br><b>글자 조각이 소우주 두뇌로 날아가 저장</b>돼요!`,
+    words:TRAIN1, model:brain, dot:2,
+    onDone(){
+      sfx.fanfare();
+      stageClear('훈련 완료! 🎓',`글자 조각들이 두뇌에 차곡차곡 쌓였어요.<br>소우주 머릿속이 궁금하지 않나요?`,'두뇌 들여다보기 🧠',sBrainView);
+    }
+  });
+}
+
+/* ═══════════════════════ 4단계 : 두뇌 들여다보기 ═══════════════════════ */
+function sBrainView(){
+  function topChips(side,n=12){
+    return Object.entries(brain.counts[side]).filter(([f])=>f.length===1)
+      .sort((a,b)=>b[1]-a[1]).slice(0,n);
+  }
+  const g=topChips('good'),b=topChips('bad');
+  const chip=(f,c,i)=>`<span class="brain-chip" style="font-size:${Math.min(14+c*4,26)}px;animation-delay:${i*.08}s">${f}<small style="font-size:10px;opacity:.6"> ×${c}</small></span>`;
+  show(`
+    <h2>🧠 소우주 두뇌 들여다보기</h2>
+    <p class="sub">소우주는 단어를 통째로 외우지 않아요.<br><b>글자 무늬가 어느 쪽에서 몇 번 나왔는지</b>를 세면서 배워요.<br>많이 본 글자일수록 크게 보여요!</p>
+    <div class="brain-view">
+      <div class="brain-half goodside"><h3>😊 좋은말 서랍</h3>${g.map(([f,c],i)=>chip(f,c,i)).join('')}</div>
+      <div class="brain-half badside"><h3>😡 나쁜말 서랍</h3>${b.map(([f,c],i)=>chip(f,c,i)).join('')}</div>
+    </div>
+    <p class="sub">새 단어가 오면 이 서랍을 뒤져서<br>"어느 쪽 글자가 많이 보이나?"를 계산해요. 이게 바로 <b>기계학습</b>!</p>
+    <button class="big-btn" id="next-btn">재미있는 실험 하나 더! 🧬</button>
+  `,3);
+  document.getElementById('next-btn').onclick=()=>{sfx.click();sPattern();};
+}
+
+/* ═══════════════════════ 5단계 : 무늬 실험 (일반화와 함정) ═══════════════════════ */
+/* 미니 두뇌에 '고마워'와 '바보' 딱 2개만 가르치고, 변형된 말·함정 단어를 시험한다 */
+function sPattern(){
+  const mini=makeModel();
+  trainWord(mini,'고마워','good');
+  trainWord(mini,'바보','bad');
+  show(`
+    ${robotSVG('rx0')}
+    <h2>🧬 무늬 실험</h2>
+    <p class="sub">실험용 <b>미니 두뇌</b>를 준비했어요.<br>
+    배운 건 딱 두 마디 — <b>"고마워"는 좋은말, "바보"는 나쁜말.</b><br><br>
+    그럼 <b>배운 적 없는</b> "고마워요", "고마웠어" 같은 말이 오면 어떻게 될까요?<br>
+    이번엔 ${stats.name} 연구원님이 <b>먼저 예측</b>하고 결과를 확인해요!</p>
+    <button class="big-btn" id="next-btn">예측 실험 시작! 🔮</button>
+  `,4);
+  setTimeout(()=>say('rx0','두 마디밖에 몰라요!','flat',2500),500);
+  document.getElementById('next-btn').onclick=()=>{sfx.click();
+    conveyorScene({
+      title:'🧬 무늬 실험 ①',
+      sub:`"고마워"와 "바보"만 아는 미니 두뇌 —<br>변형된 말도 알아볼 수 있을까요? <b>먼저 예측해 보세요!</b>`,
+      items:[['고마워요','good'],['고마웠어','good'],['바보야','bad']],
+      model:mini, dot:4, shuffle:false, guess:true,
+      onDone(results,panel){
+        const allOk=results.every(r=>r.ok);
+        panel.style.display='block';
+        panel.innerHTML=`
+          <h2>${allOk?'😲 전부 알아봤어요!':'🧐 거의 알아봤어요!'}</h2>
+          <p class="sub" style="margin:6px 0">"고마워요"도 "고마웠어"도 <b>배운 적이 없는 말</b>인데 맞혔어요!<br>
+          비밀은 <b>겹치는 글자 무늬</b> — "고마워"에서 배운
+          <span class="evi-chip g">😊 고</span><span class="evi-chip g">😊 마</span> 무늬를 알아본 거예요.</p>
+          <button class="big-btn green" id="rp-next" style="font-size:18px;padding:12px 34px">신기하다! ➜</button>`;
+        document.getElementById('rp-next').onclick=()=>{sfx.click();
+          conceptCard({icon:'🔍',title:'비슷한 무늬는 알아봐요',body:'배운 적 없는 말도 글자 무늬가 겹치면 알아맞혀요. 이걸 어른들은 "일반화"라고 불러요. AI의 진짜 힘이에요!'},sPatternTrap);
+        };
+        panel.scrollIntoView({behavior:'smooth'});
+      }
+    });
+  };
+  function sPatternTrap(){
+    conveyorScene({
+      title:'🧬 무늬 실험 ② — 함정 단어',
+      sub:`이번엔 <b>함정</b>이에요. 미니 두뇌가 속을까요?<br><b>먼저 예측해 보세요!</b>`,
+      items:[['고맙습니다','good'],['고구마',null],['안 고마워','bad']],
+      model:mini, dot:4, shuffle:false, guess:true,
+      onDone(results,panel){
+        panel.style.display='block';
+        panel.innerHTML=`
+          <h2>🙈 함정에 빠졌어요!</h2>
+          <div class="review-list" style="max-height:none">
+            <div>😵 <b>"고맙습니다"</b> — 겹치는 무늬가 '고' 하나뿐이라 엉뚱한 답을 했어요</div>
+            <div>🍠 <b>"고구마"</b> — 좋은말도 나쁜말도 아닌데 '고·마' 무늬 때문에 갸웃갸웃</div>
+            <div>😱 <b>"안 고마워"</b> — '고마워' 무늬만 보고 <b>좋은말이라고 착각!</b> '안'이 붙으면 반대 뜻인 걸 몰라요</div>
+          </div>
+          <p class="sub" style="margin:8px 0 0">소우주는 말의 <b>뜻</b>을 이해하는 게 아니라<br><b>무늬로 짐작</b>할 뿐이에요. 그래서 함정에 빠져요!</p>
+          <button class="big-btn green" id="rp-next" style="font-size:18px;padding:12px 34px">중요한 발견! ➜</button>`;
+        document.getElementById('rp-next').onclick=()=>{sfx.click();
+          conceptCard({icon:'🙈',title:'AI는 뜻을 몰라요',body:'AI는 무늬로 짐작할 뿐, 말의 진짜 뜻은 몰라요. "안 고마워"에 속는 이유죠. 그래서 진짜 AI는 훨씬 많은 데이터로 문장 전체를 배워요.'},sTest1);
+        };
+        panel.scrollIntoView({behavior:'smooth'});
+      }
+    });
+  }
+}
+
+/* ═══════════════════════ 5단계 : 분류 시험 1 ═══════════════════════ */
+function sTest1(){
+  conveyorScene({
+    title:'🏭 분류 시험 1',
+    sub:`단어 10개가 벨트를 타고 옵니다.<br>소우주의 <b>생각(근거 글자·확신도)</b>을 지켜보세요!`,
+    items:TEST1, model:brain, dot:5,
+    onDone(results,panel){
+      const acc=resultPanel(panel,results,
+        `<p class="sub" style="margin:8px 0 0">틀린 단어들을 보세요 — 대부분 <b>배운 적 없는 글자</b>였죠?</p>`,
+        '왜 틀렸을까? 🤔',
+        (a)=>{stats.acc1=a;
+          conceptCard({icon:'🧩',title:'데이터가 부족하면 AI는 헷갈려요',body:'AI는 배운 글자 무늬로만 판단해요. 처음 보는 무늬가 나오면 자신이 없어져요. 해결 방법은? 더 가르치면 돼요!'},sTrain2);
+        });
+    }
+  });
+}
+
+/* ═══════════════════════ 6단계 : 훈련 2 ═══════════════════════ */
+function sTrain2(){
+  trainScene({
+    title:'📚 두 번째 훈련',
+    sub:`이번엔 <b>22개</b>! 소우주가 틀렸던 무늬들을<br>집중적으로 가르쳐요.`,
+    words:TRAIN2, model:brain, dot:6,
+    onDone(){
+      sfx.fanfare();
+      stageClear('훈련 완료! 📚',`두뇌 서랍이 <b>${brain.docs.good+brain.docs.bad}개 단어</b>의 무늬로 가득해요.<br>얼마나 똑똑해졌을까요?`,'분류 시험 2 도전!',sTest2);
+    }
+  });
+}
+
+/* ═══════════════════════ 7단계 : 분류 시험 2 ═══════════════════════ */
+function sTest2(){
+  conveyorScene({
+    title:'🏭 분류 시험 2',
+    sub:`전부 <b>처음 보는 단어</b>들이에요.<br>배운 무늬만으로 얼마나 맞힐 수 있을까요?`,
+    items:TEST2, model:brain, dot:7,
+    onDone(results,panel){
+      const graded=results.filter(r=>r.truth!==null);
+      const acc=Math.round(graded.filter(r=>r.ok).length/graded.length*100);
+      stats.acc2=acc;
+      resultPanel(panel,results,
+        `<div style="margin-top:10px;text-align:left;font-size:14px;color:#5E7F97">
+          <div style="margin-bottom:3px">시험 1 (12개 배움)</div>
+          <div class="acc-bar" style="height:18px"><div style="width:${stats.acc1}%;background:#BFDDF0">${stats.acc1}%</div></div>
+          <div style="margin-bottom:3px">시험 2 (34개 배움)</div>
+          <div class="acc-bar" style="height:18px"><div style="width:${acc}%">${acc}%</div></div>
+        </div>`,
+        '다음 연구로 ➜',
+        ()=>{
+          conceptCard({icon:'📈',title:'데이터가 많을수록 똑똑해져요',body:`소우주는 12개 배웠을 때 ${stats.acc1}%, 34개 배웠을 때 ${stats.acc2}%! 진짜 AI도 수백만 개의 데이터로 공부한답니다.`},sPibbu);
+        });
+    }
+  });
+}
+
+/* ═══════════════════════ 8단계 : 삐뚜 실험 (반대로 가르치면?) ═══════════════════════ */
+const pibbuBrain=makeModel();
+function sPibbu(){
+  show(`
+    ${robotSVG('rp0',{body:'#F5A25D',dark:'#E17055'})}
+    <h2>🧪 이상한 실험실</h2>
+    <p class="sub">연구소 구석에서 쌍둥이 로봇 <b>삐뚜</b>를 발견했어요!<br>
+    ${stats.name} 연구원님, 궁금하지 않나요?<br>
+    <b>일부러 반대로 가르치면</b> AI는 어떻게 될까요?<br>
+    삐뚜에게 좋은말은 😡나쁜말, 나쁜말은 😊좋은말이라고 <b>거꾸로</b> 알려 주세요!</p>
+    <button class="big-btn orange" id="pibbu-btn">거꾸로 실험 시작! 🙃</button>
+  `,8);
+  setTimeout(()=>say('rp0','난 뭐든지 배울 준비 완료!','wow',2500),500);
+  document.getElementById('pibbu-btn').onclick=()=>{sfx.click();
+    trainScene({
+      title:'🙃 거꾸로 훈련',
+      sub:`<b>일부러 반대로!</b> "고마워"는 😡나쁜말 버튼,<br>"바보"는 😊좋은말 버튼을 눌러 보세요.`,
+      words:PIBBU_TRAIN, model:pibbuBrain, dot:8, robotId:'rpb', robot:{body:'#F5A25D',dark:'#E17055'},
+      onDone(){
+        sfx.fanfare();
+        stageClear('거꾸로 훈련 끝! 🙃','삐뚜가 뭔가를 배웠어요…<br>이제 삐뚜에게 분류를 시켜 봅시다!','삐뚜 시험하기',()=>sPibbuTest());
+      }
+    });
+  };
+}
+function sPibbuTest(){
+  conveyorScene({
+    title:'🧪 삐뚜의 분류 시험',
+    sub:`거꾸로 배운 삐뚜, 과연 어떻게 분류할까요?`,
+    items:PIBBU_TEST, model:pibbuBrain, dot:8, robot:{body:'#F5A25D',dark:'#E17055'},
+    onDone(results,panel){
+      /* 실제로 거꾸로 가르쳤는지 확인 (제대로 가르쳤어도 규칙은 동일함을 설명) */
+      const reversed=predict(pibbuBrain,'고마워').label==='bad';
+      panel.style.display='block';
+      panel.innerHTML=`
+        <h2>${reversed?'😱 엉망진창!':'🧐 실험 결과'}</h2>
+        <p class="sub" style="margin:6px 0">${reversed
+          ?`삐뚜는 "고맙습니다"를 <b>나쁜말 통에 버리고</b>,<br>"바보야"를 <b>좋은말 상자에</b> 넣었어요!<br>삐뚜가 나쁜 로봇이라서가 아니에요 — <b>배운 그대로</b> 한 것뿐이에요.`
+          :`반대로 가르치지 않으셨군요! 그래도 규칙은 똑같아요.<br>AI는 언제나 <b>가르친 그대로</b> 판단해요.<br>거꾸로 가르쳤다면 거꾸로 분류했을 거예요.`}</p>
+        <button class="big-btn green" id="rp-next" style="font-size:18px;padding:12px 34px">중요한 발견! 💡</button>`;
+      document.getElementById('rp-next').onclick=()=>{sfx.click();
+        conceptCard({icon:'🪞',title:'AI는 가르친 사람을 그대로 닮아요',body:'AI는 스스로 옳고 그름을 몰라요. 잘못 가르치면 잘못 판단해요. 그래서 AI를 가르치는 사람의 책임이 아주 커요!'},sAmbig);
+      };
+      panel.scrollIntoView({behavior:'smooth'});
+    }
+  });
+}
+
+/* ═══════════════════════ 9단계 : 마음 가르치기 (정답 없는 말) ═══════════════════════ */
+function sAmbig(){
+  show(`
+    ${robotSVG('ra0')}
+    <h2>💭 마음 가르치기</h2>
+    <p class="sub">이번 단어들은 <b>정답이 없어요.</b><br>
+    "야!"는 반가운 인사일까요, 기분 나쁜 말일까요?<br>
+    ${stats.name} 연구원님의 <b>생각대로</b> 소우주에게 가르쳐 주세요.</p>
+    <button class="big-btn" id="ambig-btn">내 마음대로 가르치기 💜</button>
+  `,9);
+  setTimeout(()=>say('ra0','네 생각이 궁금해!','happy',2500),500);
+  document.getElementById('ambig-btn').onclick=()=>{sfx.click();
+    trainScene({
+      title:'💭 내 마음대로 훈련',
+      sub:`정답은 없어요. <b>내 기준</b>으로 눌러 보세요!`,
+      words:AMBIG, model:brain, dot:9,
+      onDone(){
+        show(`
+          ${robotSVG('ra1')}
+          <h2>중요한 사실 💡</h2>
+          <div style="background:#FFF9E8;border:3px dashed var(--yellow);border-radius:24px;padding:16px 22px;font-size:15px;line-height:1.7;margin:12px 0;max-width:460px">
+            "야!", "헐", "대박"은 <b>누가, 언제, 어떤 목소리로</b> 말하느냐에 따라
+            좋은말도 되고 나쁜말도 돼요.<br><br>
+            방금 ${stats.name} 연구원님이 가르친 대로 소우주의 기준이 정해졌어요.
+            친구가 가르쳤다면 <b>다른 소우주</b>가 되었을 거예요!<br><br>
+            그래서 진짜 AI를 만들 때는 <b>여러 사람의 생각을 골고루</b> 모아요.
+            한쪽 생각만 배우면 <b>치우친 AI</b>가 되거든요.
+          </div>
+          <button class="big-btn" id="next-btn">발견 카드 받기 ✨</button>
+        `,9);
+        setTimeout(()=>say('ra1','난 너를 닮아가!','happy',2500),400);
+        document.getElementById('next-btn').onclick=()=>{sfx.click();
+          conceptCard({icon:'💗',title:'사람마다 생각이 달라요',body:'같은 말도 사람마다 다르게 느껴요. 그래서 AI에게는 여러 사람의 다양한 생각을 골고루 가르쳐야 해요.'},sFinalIntro);
+        };
+      }
+    });
+  };
+}
+
+/* ═══════════════════════ 10단계 : 졸업 시험 ═══════════════════════ */
+function sFinalIntro(){
+  show(`
+    ${robotSVG('rf0')}
+    <h2>🏆 소우주 졸업 시험</h2>
+    <p class="sub">드디어 마지막 시험!<br>
+    긴 문장 <b>15개</b>가 빠르게 쏟아집니다.<br>
+    나쁜말을 놓치면 ❤️가 줄어요. 연속으로 맞히면 <b>콤보 보너스</b>!<br>
+    ${stats.name} 연구원님이 훈련시킨 실력, 보여 주세요!</p>
+    <button class="big-btn" id="final-btn">졸업 시험 시작! 🔥</button>
+  `,10);
+  setTimeout(()=>say('rf0','떨리지만… 할 수 있어!','flat',2500),500);
+  document.getElementById('final-btn').onclick=()=>{sfx.click();
+    conveyorScene({
+      title:'🏆 졸업 시험',
+      sub:`소우주를 응원해 주세요!`,
+      items:FINAL, model:brain, dot:10, hud:true, fast:true,
+      onDone(results,panel){
+        const graded=results.filter(r=>r.truth!==null);
+        const correct=graded.filter(r=>r.ok).length;
+        stats.finalAcc=Math.round(correct/graded.length*100);
+        sfx.fanfare();
+        const starN=stats.finalAcc>=90?3:stats.finalAcc>=70?2:1;
+        stageClear('졸업 시험 통과! 🏆',
+          `점수 <b>⭐ ${stats.finalScore}점</b> · 정답률 <b>${stats.finalAcc}%</b><br>${'🌟'.repeat(starN)}<br>이제 진짜 승부 — <b>${stats.name} 연구원님이 고른 말</b>로<br>소우주를 시험하는 <b>내 말 챌린지</b>!`,
+          '내 말 챌린지 도전! 🔭',sChallenge);
+      }
+    });
+  };
+}
+
+/* ═══════════════════════ 12단계 : 내 말 챌린지 (직접 입력 + 점수) ═══════════════════════ */
+/* 연구원이 직접 고른 말을 소우주가 알아맞히면 점수! 점수가 높을수록 훈련을 잘 시킨 것 */
+function sChallenge(){
+  const N=5;
+  let round=1, score=0;
+  show(`
+    <h2>🔭 내 말 챌린지</h2>
+    <p class="sub"><b>${stats.name} 연구원님이 직접 고른 말 ${N}개</b>로 소우주를 시험해요.<br>
+    소우주가 알아맞히면 <b>+20점</b> — 점수가 높을수록<br>연구원님이 <b>훈련을 잘 시켰다</b>는 뜻이에요!</p>
+    <div class="hud" style="max-width:440px">
+      <div class="count-pill">라운드 <span id="ch-round">1</span> / ${N}</div>
+      <div id="score-pill">🏅 <span id="ch-score">0</span>점</div>
+    </div>
+    ${robotSVG('rc')}
+    <div id="ch-zone" style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center"></div>
+  `,11);
+  setTimeout(()=>say('rc','어떤 말이든 자신 있어!','wow',2200),400);
+  const zone=document.getElementById('ch-zone');
+
+  function askWord(){
+    document.getElementById('ch-round').textContent=round;
+    zone.innerHTML=`
+      <p class="sub" style="margin:2px 0 8px">소우주를 시험할 말을 써 주세요!<br><small style="color:#8FA9BA">(칭찬, 응원, 놀리는 말… 뭐든 좋아요)</small></p>
+      <input class="name-input" id="ch-input" maxlength="12" placeholder="예: 오늘 즐거웠어" style="width:280px">
+      <button class="big-btn" id="ch-go" style="font-size:18px;padding:12px 34px;margin-top:10px">이 말로 시험! 🔍</button>`;
+    const input=document.getElementById('ch-input');
+    input.focus();
+    document.getElementById('ch-go').onclick=()=>{
+      const w=input.value.trim();
+      if(!w){input.style.borderColor='var(--bad)';input.placeholder='한 글자 이상 써 주세요!';return;}
+      sfx.click();askTruth(w);
+    };
+    input.onkeydown=e=>{if(e.key==='Enter')document.getElementById('ch-go').click();};
+  }
+  function askTruth(w){
+    zone.innerHTML=`
+      <div class="word-card" style="font-size:28px;padding:22px 26px">${w}</div>
+      <p class="sub" style="margin:0 0 8px">소우주에게는 비밀! 이 말은 <b>사실</b> 어떤 말인가요?</p>
+      <div class="label-btns">
+        <button class="label-btn good" id="ch-good" style="font-size:17px;min-width:130px">😊 좋은말</button>
+        <button class="label-btn bad" id="ch-bad" style="font-size:17px;min-width:130px">😡 나쁜말</button>
+      </div>`;
+    document.getElementById('ch-good').onclick=()=>{sfx.pop();judge(w,'good');};
+    document.getElementById('ch-bad').onclick=()=>{sfx.pop();judge(w,'bad');};
+  }
+  async function judge(w,truth){
+    zone.innerHTML=`
+      <div class="word-card" style="font-size:28px;padding:22px 26px">${w}</div>
+      <div class="result-panel" style="margin-top:0">
+        <div style="font-size:14px;color:#7D99AC" id="ch-tlabel">🤖 소우주가 생각하는 중…</div>
+        <div id="ch-evi" style="margin:6px 0;min-height:30px"></div>
+        <div class="conf-row"><div class="gauge"><div id="ch-confbar"></div></div><span class="cpct" id="ch-confpct"></span></div>
+        <div id="ch-verdict" style="font-size:20px;margin-top:10px;min-height:30px"></div>
+        <div id="ch-after"></div>
+      </div>`;
+    setFace('rc','flat');sfx.think();
+    const p=predict(brain,w), evi=explain(brain,w);
+    for(const e of evi){
+      await sleep(320);
+      const cls=!e.seen?'n':(e.lean>0?'g':'b');
+      const mark=!e.seen?'❓':(e.lean>0?'😊':'😡');
+      document.getElementById('ch-evi').insertAdjacentHTML('beforeend',`<span class="evi-chip ${cls}">${mark} ${e.f}</span>`);
+      sfx.chip();
+    }
+    await sleep(250);
+    const confPct=Math.round(p.conf*100);
+    const bar=document.getElementById('ch-confbar');
+    bar.style.background=p.unsure?'var(--yellow)':(p.label==='good'?'var(--good)':'var(--bad)');
+    bar.style.width=confPct+'%';
+    document.getElementById('ch-confpct').textContent=confPct+'%';
+    await sleep(650);
+    const verdict=p.unsure?'unsure':p.label;
+    const vText=verdict==='unsure'?'🤔 "잘 모르겠어요…"':(verdict==='good'?'😊 "좋은말이에요!"':'🚫 "나쁜말이에요!"');
+    document.getElementById('ch-tlabel').textContent='🤖 소우주의 판정';
+    document.getElementById('ch-verdict').textContent=vText;
+    const hit=(verdict===truth);
+    await sleep(500);
+    const after=document.getElementById('ch-after');
+    if(hit){
+      score+=20;document.getElementById('ch-score').textContent=score;
+      setFace('rc','happy');robotFx('rc','jump');sfx.good();confetti(12);
+      say('rc','맞혔다!','wow',1500);
+      after.innerHTML=`<p class="sub" style="margin:8px 0 4px">🎯 <b>정답! +20점</b> — 연구원님이 잘 가르친 덕분이에요!</p>`;
+    }else{
+      setFace('rc','sad');robotFx('rc','shake');sfx.wrong();
+      trainWord(brain,w,truth); /* 틀린 말은 그 자리에서 다시 배운다 */
+      say('rc','방금 배웠어요!','sad',1800);
+      after.innerHTML=`<p class="sub" style="margin:8px 0 4px">😅 틀렸어요! ${verdict==='unsure'?'아직 안 배운 무늬였나 봐요.':'무늬가 헷갈렸나 봐요.'}<br>
+      대신 소우주가 <b>"${w}"를 방금 배웠어요</b> — 다음엔 맞힐 거예요! 💪</p>`;
+    }
+    after.insertAdjacentHTML('beforeend',
+      `<button class="big-btn green" id="ch-next" style="font-size:17px;padding:11px 30px;margin-top:4px">${round<N?'다음 라운드 ➜':'결과 보기 🏅'}</button>`);
+    document.getElementById('ch-next').onclick=()=>{sfx.click();
+      if(round<N){round++;askWord();}else finish();
+    };
+  }
+  function finish(){
+    stats.challengeScore=score;
+    const msg=score>=100?'🏆 전설의 AI 선생님!':score>=80?'🌟 훌륭한 AI 선생님!':score>=60?'💪 멋진 AI 선생님!':'🌱 소우주가 더 배우고 싶대요!';
+    sfx.fanfare();
+    overlay(`<div class="emoji">🏅</div><h2>챌린지 결과</h2>
+      <p class="sub">내 말 챌린지 <b>${score}점 / 100점</b><br><b style="font-size:20px">${msg}</b><br><br>
+      틀린 말도 그 자리에서 바로 배우는 것 —<br>그게 AI가 자라는 방법이에요!</p>
+      <button class="big-btn" id="ov-btn">발견 카드 받기 ✨</button>`);
+    confetti();
+    document.getElementById('ov-btn').onclick=()=>{sfx.click();closeOverlay();
+      conceptCard({icon:'🔁',title:'AI는 틀리면서 자라요',body:'AI가 틀렸을 때 바른 답을 알려주면 곧바로 다시 배워요. 진짜 AI 서비스도 사람들의 피드백을 받으며 매일 자라고 있답니다.'},sQuiz);
+    };
+  }
+  askWord();
+}
+
+/* ═══════════════════════ 11단계 : 연구원 자격 OX 퀴즈 ═══════════════════════ */
+function sQuiz(){
+  let qi=0;stats.quizOk=0;
+  function render(){
+    const q=QUIZ[qi];
+    show(`
+      <h2>📝 연구원 자격 퀴즈 ${qi+1} / ${QUIZ.length}</h2>
+      <p class="sub">오늘 실험에서 발견한 것들, 기억하나요?</p>
+      <div class="quiz-card">${q.q}</div>
+      <div class="ox-btns">
+        <button class="ox-btn o" id="ox-o">⭕</button>
+        <button class="ox-btn x" id="ox-x">❌</button>
+      </div>
+      <div class="quiz-feedback" id="qfb"></div>
+    `,12);
+    function answer(mine){
+      const ok=(mine===q.a);
+      if(ok){stats.quizOk++;sfx.good();confetti(14);}else{sfx.wrong();}
+      document.getElementById('qfb').innerHTML=`${ok?'🎉 <b>정답!</b>':'😅 <b>아쉬워요!</b> 정답은 '+(q.a?'⭕':'❌')} — ${q.why}`;
+      document.getElementById('ox-o').disabled=true;document.getElementById('ox-x').disabled=true;
+      setTimeout(()=>{qi++;if(qi<QUIZ.length)render();else done();},2600);
+    }
+    document.getElementById('ox-o').onclick=()=>answer(true);
+    document.getElementById('ox-x').onclick=()=>answer(false);
+  }
+  function done(){
+    sfx.fanfare();
+    stageClear('퀴즈 완료! 📝',`${QUIZ.length}문제 중 <b>${stats.quizOk}문제</b> 정답!<br>모든 연구를 마쳤습니다.<br>이제 <b>수료증</b>을 받을 시간이에요!`,'수료증 받기 📜',sCert);
+  }
+  render();
+}
+
+/* ═══════════════════════ 12단계 : 연구 요약 + 수료증 ═══════════════════════ */
+function sCert(){
+  const starN=stats.finalAcc>=90?3:stats.finalAcc>=70?2:1;
+  show(`
+    <h2>📜 연구 완료 보고서</h2>
+    <p class="sub"><b>${stats.name} 연구원</b>님이 오늘 발견한 것들</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:600px">
+      ${stats.cards.map(c=>`<div class="mini-card"><div class="cicon">${c.icon}</div>${c.title}</div>`).join('')}
+    </div>
+    <div class="stars" style="margin-top:14px">${'⭐'.repeat(starN)}${'<span style="filter:grayscale(1);opacity:.3">⭐</span>'.repeat(3-starN)}</div>
+    <p class="sub">졸업 시험 ⭐${stats.finalScore}점 · 내 말 챌린지 🏅${stats.challengeScore}점 · 정답률 ${stats.finalAcc}% · 퀴즈 ${stats.quizOk}/${QUIZ.length}</p>
+    <input class="name-input" id="cert-name" maxlength="10" value="${stats.name}">
+    <button class="big-btn" id="make-cert">수료증 만들기 ✨</button>
+    <div id="cert-area" style="display:none;flex-direction:column;align-items:center;width:100%">
+      <canvas id="cert-canvas" width="1000" height="740"></canvas>
+      <button class="big-btn green" id="dl-cert">수료증 저장하기 💾</button>
+    </div>
+  `,13);
+  document.getElementById('make-cert').onclick=()=>{
+    const name=document.getElementById('cert-name').value.trim()||stats.name||'꼬마';
+    sfx.fanfare();confetti(60);
+    drawCert(name,starN);
+    document.getElementById('cert-area').style.display='flex';
+    document.getElementById('cert-canvas').scrollIntoView({behavior:'smooth'});
+  };
+}
+function drawCert(name,starN){
+  const cv=document.getElementById('cert-canvas'),x=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  /* 크림색 종이 바탕 */
+  x.fillStyle='#FBF7EB';x.fillRect(0,0,W,H);
+  /* 위쪽: 여름 하늘 배너 */
+  x.fillStyle='#79BEE9';x.fillRect(48,48,W-96,182);
+  const cloud=(cx,cy,r)=>{x.fillStyle='#fff';x.beginPath();
+    x.arc(cx-r,cy,r*.72,0,7);x.arc(cx,cy-r*.45,r,0,7);x.arc(cx+r,cy,r*.66,0,7);
+    x.arc(cx,cy+r*.28,r*.8,0,7);x.fill();};
+  x.fillStyle='rgba(255,214,107,.35)';x.beginPath();x.arc(W-140,102,42,0,7);x.fill();
+  x.fillStyle='#FFD66B';x.beginPath();x.arc(W-140,102,30,0,7);x.fill(); /* 태양 */
+  cloud(170,112,26);cloud(330,86,19);cloud(W-320,134,22);
+  x.textAlign='center';
+  x.font='30px Jua, "Malgun Gothic", sans-serif';x.fillStyle='rgba(255,255,255,.92)';
+  x.fillText('🤖 소우주 AI 말 연구소',W/2,118);
+  x.font='58px Jua, "Malgun Gothic", sans-serif';x.fillStyle='#fff';
+  x.fillText('A I 연 구 원  수 료 증',W/2,190);
+  /* 이름 */
+  x.font='54px Jua, "Malgun Gothic", sans-serif';x.fillStyle='#33556E';x.fillText(name+' 연구원',W/2,310);
+  x.strokeStyle='#FFD66B';x.lineWidth=4;
+  x.beginPath();x.moveTo(W/2-180,328);x.lineTo(W/2+180,328);x.stroke();
+  /* 본문 */
+  x.font='27px Jua, "Malgun Gothic", sans-serif';x.fillStyle='#5E7F97';
+  x.fillText('위 연구원은 텅 빈 AI 로봇에게 좋은말과 나쁜말을 가르치고,',W/2,392);
+  x.fillText('데이터·기계학습·AI 편향의 비밀을 모두 발견하였으므로',W/2,436);
+  x.fillText('AI 말 연구원 자격을 드립니다.',W/2,480);
+  x.font='33px sans-serif';x.fillText(stats.cards.map(c=>c.icon).join(' ')||'🥚',W/2,528);
+  x.font='40px sans-serif';x.fillText('⭐'.repeat(starN),W/2,574);
+  x.font='22px Gaegu, Jua, "Malgun Gothic", sans-serif';x.fillStyle='#7D99AC';
+  const d=new Date();
+  x.fillText(`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 · 졸업 시험 ${stats.finalScore}점 · 내 말 챌린지 ${stats.challengeScore}점 · 정답률 ${stats.finalAcc}% · 발견 카드 ${stats.cards.length}장`,W/2,610);
+  x.font='26px Jua, "Malgun Gothic", sans-serif';x.fillStyle='#3E8FC9';
+  x.fillText('소우주 AI 말 연구소장 🤖 (인)',W/2,642);
+  /* 아래쪽: 바다 물결과 돛단배 (글씨를 가리지 않도록 낮게) */
+  x.fillStyle='rgba(169,214,241,.85)';
+  x.beginPath();x.moveTo(48,H-70);
+  for(let px=48;px<W-48;px+=80){x.quadraticCurveTo(px+40,H-82,Math.min(px+80,W-48),H-70);}
+  x.lineTo(W-48,H-48);x.lineTo(48,H-48);x.closePath();x.fill();
+  x.fillStyle='#4D9FD6';
+  x.beginPath();x.moveTo(48,H-58);
+  for(let px=48;px<W-48;px+=60){x.quadraticCurveTo(px+30,H-70,Math.min(px+60,W-48),H-58);}
+  x.lineTo(W-48,H-48);x.lineTo(48,H-48);x.closePath();x.fill();
+  x.font='30px sans-serif';x.fillText('⛵',150,H-62);x.fillText('🌴',W-150,H-64);
+  /* 테두리 */
+  x.strokeStyle='#4D9FD6';x.lineWidth=9;x.strokeRect(28,28,W-56,H-56);
+  x.strokeStyle='#FFD66B';x.lineWidth=4;x.setLineDash([16,10]);x.strokeRect(48,48,W-96,H-96);x.setLineDash([]);
+  document.getElementById('dl-cert').onclick=()=>{
+    sfx.click();
+    const a=document.createElement('a');
+    a.download=`AI연구원수료증_${name}.png`;a.href=cv.toDataURL('image/png');a.click();
+  };
+}
+
+/* ═══════════════════════ 시작 ═══════════════════════ */
+drawProgress();
+sIntro();
+</script>
+</body>
+</html>
