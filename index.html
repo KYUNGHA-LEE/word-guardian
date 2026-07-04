@@ -69,20 +69,19 @@ h2{font-size:23px;margin:4px 0;text-align:center}
 .robot{width:140px;animation:hoverFloat 3s ease-in-out infinite}
 .robot.sm{width:88px}
 @keyframes hoverFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-.robot .eye{transition:all .2s}
-.robot .mouth-happy,.robot .mouth-flat,.robot .mouth-open,.robot .mouth-sad{opacity:0}
-.robot[data-face="happy"] .mouth-happy{opacity:1}
-.robot[data-face="flat"] .mouth-flat{opacity:1}
-.robot[data-face="wow"] .mouth-open{opacity:1}
-.robot[data-face="sad"] .mouth-sad{opacity:1}
-.robot[data-face="wow"] .eye{transform:scale(1.25);transform-origin:center}
-.robot[data-face="sad"] .eye{transform:scaleY(.5);transform-origin:center}
+.robot{position:relative}
+.robot img{width:100%;height:auto;display:block;-webkit-user-drag:none}
+.robot .emo{position:absolute;top:-10px;right:-16px;font-size:26px;pointer-events:none}
+.robot .emo::after{display:inline-block;animation:stampIn .25s}
+.robot[data-face="wow"] .emo::after{content:'✨'}
+.robot[data-face="sad"] .emo::after{content:'💧'}
+.robot[data-face="flat"] .emo::after{content:'🤔'}
+.robot.pibbu img{filter:hue-rotate(185deg) saturate(.85)}
+.robot.sm .emo{font-size:19px;top:-7px;right:-10px}
 .robot.jump{animation:jump .5s}
 @keyframes jump{0%,100%{transform:translateY(0)}40%{transform:translateY(-24px) rotate(-4deg)}}
 .robot.shake{animation:shakeR .5s}
 @keyframes shakeR{0%,100%{transform:none}25%{transform:translateX(-9px) rotate(-3deg)}75%{transform:translateX(9px) rotate(3deg)}}
-.robot.spin .eye{animation:eyeSpin .8s linear infinite}
-@keyframes eyeSpin{to{transform:rotate(360deg)}}
 .bubble{
   position:absolute;left:122px;top:-4px;background:#fff;border-radius:18px;padding:9px 15px;
   font-size:15px;min-width:120px;max-width:230px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.1);
@@ -377,24 +376,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* ═══════════════════════ 로봇 SVG ═══════════════════════ */
 function robotSVG(id,opt={}){
-  const body=opt.body||'#6FB7E8', dark=opt.dark||'#4D9FD6', small=opt.small?' sm':'';
-  return `<div class="robot-wrap"><svg id="${id}" class="robot${small}" data-face="${opt.face||'happy'}" viewBox="0 0 120 130">
-    <line x1="60" y1="8" x2="60" y2="22" stroke="${body}" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="60" cy="8" r="6" fill="#FFD66B"><animate attributeName="opacity" values="1;.4;1" dur="1.5s" repeatCount="indefinite"/></circle>
-    <rect x="18" y="22" width="84" height="66" rx="20" fill="${body}"/>
-    <rect x="26" y="30" width="68" height="50" rx="14" fill="#FFFFFF"/>
-    <g class="eye-g"><circle class="eye" cx="46" cy="52" r="7" fill="#33556E"/></g>
-    <g class="eye-g"><circle class="eye" cx="74" cy="52" r="7" fill="#33556E"/></g>
-    <circle cx="48.5" cy="49.5" r="2.4" fill="#fff"/><circle cx="76.5" cy="49.5" r="2.4" fill="#fff"/>
-    <path class="mouth-happy" d="M50 64 Q60 73 70 64" stroke="#33556E" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <line class="mouth-flat" x1="52" y1="67" x2="68" y2="67" stroke="#33556E" stroke-width="4" stroke-linecap="round"/>
-    <ellipse class="mouth-open" cx="60" cy="67" rx="7" ry="9" fill="#33556E"/>
-    <path class="mouth-sad" d="M50 70 Q60 61 70 70" stroke="#33556E" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <rect x="8" y="42" width="10" height="24" rx="5" fill="${dark}"/>
-    <rect x="102" y="42" width="10" height="24" rx="5" fill="${dark}"/>
-    <rect x="34" y="92" width="52" height="26" rx="12" fill="${dark}"/>
-    <circle cx="60" cy="105" r="7" fill="#FFD66B"/>
-  </svg><div class="bubble" id="${id}-bubble"></div></div>`;
+  /* 캐릭터 이미지 기반. opt.body가 있으면(=삐뚜) 색조 필터로 쌍둥이 느낌을 준다 */
+  const pibbu=opt.body?' pibbu':'', small=opt.small?' sm':'';
+  return `<div class="robot-wrap"><div id="${id}" class="robot${small}${pibbu}" data-face="${opt.face||'happy'}">
+    <img src="character.png" alt="소우주" draggable="false">
+    <span class="emo"></span>
+  </div><div class="bubble" id="${id}-bubble"></div></div>`;
 }
 function say(id,text,face='happy',dur=2000){
   const r=document.getElementById(id),b=document.getElementById(id+'-bubble');
