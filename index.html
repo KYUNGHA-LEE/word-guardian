@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>소우주 AI 말 연구소</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -267,7 +269,7 @@ h2{font-size:23px;margin:4px 0;text-align:center}
 </div>
 <div id="progress"></div>
 <div id="stage"></div>
-<button id="restart" onclick="if(confirm('처음부터 다시 할까요?'))location.reload()">↺ 처음부터</button>
+<button id="restart">↺ 처음부터</button>
 <div id="overlay"><div class="panel" id="ov-panel"></div></div>
 
 <script>
@@ -329,6 +331,20 @@ function explain(m,word){
 }
 const brain=makeModel();   /* 소우주 두뇌 */
 const stats={name:'',acc1:0,acc2:0,cards:[],finalScore:0,finalAcc:0,hearts:3,quizOk:0,challengeScore:0};
+
+/* ═══════════════════════ 이어하기 (localStorage 자동 저장) ═══════════════════════ */
+/* 각 단계에 들어설 때마다 두뇌·기록을 저장 → 창을 닫아도 그 단계부터 다시 시작 */
+const SAVE_KEY='sowooju-word-lab-save-v1';
+function packModel(m){return {counts:m.counts,totals:m.totals,docs:m.docs,vocab:[...m.vocab]};}
+function unpackModel(m,d){m.counts=d.counts;m.totals=d.totals;m.docs=d.docs;m.vocab=new Set(d.vocab);}
+function saveCheckpoint(scene){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(
+    {scene,brain:packModel(brain),pibbu:packModel(pibbuBrain),stats:{...stats},savedAt:Date.now()}));}catch(e){}
+}
+function loadSave(){
+  try{const d=JSON.parse(localStorage.getItem(SAVE_KEY));return (d&&d.scene&&d.brain&&d.stats)?d:null;}catch(e){return null;}
+}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
 
 /* ═══════════════════════ 단어 데이터 (node로 정확도 검증·튜닝 완료) ═══════════════════════ */
 const OBSERVE=['최고야','바보','고마워'];
@@ -733,6 +749,7 @@ function sIntro(){
 
 /* ═══════════════════════ 2단계 : 관찰 실험 (훈련 0 상태) ═══════════════════════ */
 function sObserve(){
+  saveCheckpoint('sObserve');
   conveyorScene({
     title:'🔬 관찰 실험',
     sub:`아직 <b>아무것도 배우지 않은</b> 소우주에게<br>단어 3개를 분류시켜 봅니다. 과연…?`,
@@ -754,6 +771,7 @@ function sObserve(){
 
 /* ═══════════════════════ 3단계 : 훈련 1 ═══════════════════════ */
 function sTrain1(){
+  saveCheckpoint('sTrain1');
   trainScene({
     title:'🎓 첫 번째 훈련',
     sub:`단어 12개를 가르칩니다. 버튼을 누르면<br><b>글자 조각이 소우주 두뇌로 날아가 저장</b>돼요!`,
@@ -767,6 +785,7 @@ function sTrain1(){
 
 /* ═══════════════════════ 4단계 : 두뇌 들여다보기 ═══════════════════════ */
 function sBrainView(){
+  saveCheckpoint('sBrainView');
   function topChips(side,n=12){
     return Object.entries(brain.counts[side]).filter(([f])=>f.length===1)
       .sort((a,b)=>b[1]-a[1]).slice(0,n);
@@ -789,6 +808,7 @@ function sBrainView(){
 /* ═══════════════════════ 5단계 : 무늬 실험 (일반화와 함정) ═══════════════════════ */
 /* 미니 두뇌에 '고마워'와 '바보' 딱 2개만 가르치고, 변형된 말·함정 단어를 시험한다 */
 function sPattern(){
+  saveCheckpoint('sPattern');
   const mini=makeModel();
   trainWord(mini,'고마워','good');
   trainWord(mini,'바보','bad');
@@ -852,6 +872,7 @@ function sPattern(){
 
 /* ═══════════════════════ 5단계 : 분류 시험 1 ═══════════════════════ */
 function sTest1(){
+  saveCheckpoint('sTest1');
   conveyorScene({
     title:'🏭 분류 시험 1',
     sub:`단어 10개가 벨트를 타고 옵니다.<br>소우주의 <b>생각(근거 글자·확신도)</b>을 지켜보세요!`,
@@ -869,6 +890,7 @@ function sTest1(){
 
 /* ═══════════════════════ 6단계 : 훈련 2 ═══════════════════════ */
 function sTrain2(){
+  saveCheckpoint('sTrain2');
   trainScene({
     title:'📚 두 번째 훈련',
     sub:`이번엔 <b>22개</b>! 소우주가 틀렸던 무늬들을<br>집중적으로 가르쳐요.`,
@@ -882,6 +904,7 @@ function sTrain2(){
 
 /* ═══════════════════════ 7단계 : 분류 시험 2 ═══════════════════════ */
 function sTest2(){
+  saveCheckpoint('sTest2');
   conveyorScene({
     title:'🏭 분류 시험 2',
     sub:`전부 <b>처음 보는 단어</b>들이에요.<br>배운 무늬만으로 얼마나 맞힐 수 있을까요?`,
@@ -908,6 +931,7 @@ function sTest2(){
 /* ═══════════════════════ 8단계 : 삐뚜 실험 (반대로 가르치면?) ═══════════════════════ */
 const pibbuBrain=makeModel();
 function sPibbu(){
+  saveCheckpoint('sPibbu');
   show(`
     ${robotSVG('rp0',{body:'#F5A25D',dark:'#E17055'})}
     <h2>🧪 이상한 실험실</h2>
@@ -931,6 +955,7 @@ function sPibbu(){
   };
 }
 function sPibbuTest(){
+  saveCheckpoint('sPibbuTest');
   conveyorScene({
     title:'🧪 삐뚜의 분류 시험',
     sub:`거꾸로 배운 삐뚜, 과연 어떻게 분류할까요?`,
@@ -955,6 +980,7 @@ function sPibbuTest(){
 
 /* ═══════════════════════ 9단계 : 마음 가르치기 (정답 없는 말) ═══════════════════════ */
 function sAmbig(){
+  saveCheckpoint('sAmbig');
   show(`
     ${robotSVG('ra0')}
     <h2>💭 마음 가르치기</h2>
@@ -994,6 +1020,7 @@ function sAmbig(){
 
 /* ═══════════════════════ 10단계 : 졸업 시험 ═══════════════════════ */
 function sFinalIntro(){
+  saveCheckpoint('sFinalIntro');
   show(`
     ${robotSVG('rf0')}
     <h2>🏆 소우주 졸업 시험</h2>
@@ -1026,6 +1053,7 @@ function sFinalIntro(){
 /* ═══════════════════════ 12단계 : 내 말 챌린지 (직접 입력 + 점수) ═══════════════════════ */
 /* 연구원이 직접 고른 말을 소우주가 알아맞히면 점수! 점수가 높을수록 훈련을 잘 시킨 것 */
 function sChallenge(){
+  saveCheckpoint('sChallenge');
   const N=5;
   let round=1, score=0;
   show(`
@@ -1137,6 +1165,7 @@ function sChallenge(){
 
 /* ═══════════════════════ 11단계 : 연구원 자격 OX 퀴즈 ═══════════════════════ */
 function sQuiz(){
+  saveCheckpoint('sQuiz');
   let qi=0;stats.quizOk=0;
   function render(){
     const q=QUIZ[qi];
@@ -1169,6 +1198,7 @@ function sQuiz(){
 
 /* ═══════════════════════ 12단계 : 연구 요약 + 수료증 ═══════════════════════ */
 function sCert(){
+  saveCheckpoint('sCert');
   const starN=stats.finalAcc>=90?3:stats.finalAcc>=70?2:1;
   show(`
     <h2>📜 연구 완료 보고서</h2>
@@ -1247,9 +1277,52 @@ function drawCert(name,starN){
   };
 }
 
+/* ═══════════════════════ 이어하기 화면 ═══════════════════════ */
+const SCENES={sObserve,sTrain1,sBrainView,sPattern,sTest1,sTrain2,sTest2,sPibbu,sPibbuTest,sAmbig,sFinalIntro,sChallenge,sQuiz,sCert};
+const SCENE_DOT={sObserve:1,sTrain1:2,sBrainView:3,sPattern:4,sTest1:5,sTrain2:6,sTest2:7,sPibbu:8,sPibbuTest:8,sAmbig:9,sFinalIntro:10,sChallenge:11,sQuiz:12,sCert:13};
+function sResume(saved){
+  const dot=SCENE_DOT[saved.scene]||1;
+  const st=STEPS[dot];
+  const nm=saved.stats.name||'꼬마';
+  show(`
+    ${robotSVG('rz')}
+    <h2>다시 만났다! 👋</h2>
+    <p class="sub">소우주가 <b>${nm} 연구원</b>님을 기억하고 있어요.<br>
+    지난번에 <b>${dot+1}단계 · ${st.icon} ${st.name}</b>까지 왔었어요.<br>
+    두뇌에 배운 무늬도 그대로 남아 있고요!</p>
+    <button class="big-btn green" id="resume-btn">이어서 하기 ▶</button>
+    <button class="big-btn orange" id="fresh-btn" style="margin-top:12px;font-size:17px;padding:12px 32px">처음부터 새로 하기 ↺</button>
+  `,dot);
+  setTimeout(()=>say('rz',`${nm} 연구원님, 보고 싶었어요!`,'wow',2600),500);
+  document.getElementById('resume-btn').onclick=()=>{
+    sfx.click();
+    unpackModel(brain,saved.brain);
+    unpackModel(pibbuBrain,saved.pibbu);
+    Object.assign(stats,saved.stats);
+    SCENES[saved.scene]();
+  };
+  /* 처음부터: 기록이 지워지므로 실수 방지를 위해 두 번 눌러야 실행 */
+  const fb=document.getElementById('fresh-btn');
+  fb.onclick=()=>{
+    sfx.click();
+    if(fb.dataset.arm){clearSave();location.reload();return;}
+    fb.dataset.arm='1';fb.textContent='기록이 지워져요! 한 번 더 👆';
+    setTimeout(()=>{if(document.body.contains(fb)){delete fb.dataset.arm;fb.textContent='처음부터 새로 하기 ↺';}},3000);
+  };
+}
+/* 우하단 ↺ 버튼도 두 번 눌러야 초기화 */
+const rbtn=document.getElementById('restart');
+rbtn.onclick=()=>{
+  sfx.click();
+  if(rbtn.dataset.arm){clearSave();location.reload();return;}
+  rbtn.dataset.arm='1';rbtn.textContent='정말요? 한 번 더 👆';rbtn.style.color='var(--bad)';
+  setTimeout(()=>{delete rbtn.dataset.arm;rbtn.textContent='↺ 처음부터';rbtn.style.color='';},3000);
+};
+
 /* ═══════════════════════ 시작 ═══════════════════════ */
 drawProgress();
-sIntro();
+const _saved=loadSave();
+if(_saved&&SCENES[_saved.scene])sResume(_saved);else sIntro();
 </script>
 </body>
 </html>
